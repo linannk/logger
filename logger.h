@@ -4,36 +4,65 @@
 #include <stdarg.h>
 #include <string.h>
 #include <time.h>
+#include <stdint.h>
 
-#define LOG_LOG
-//#define LOG_INFO
-//#define LOG_DEBUG
-//#define LOG_WARNING
-#define LOG_ERROR
-#define LOG_FATAL
+#define LOGGER_LOG
+#define LOGGER_INFO
+#define LOGGER_DEBUG
+#define LOGGER_WARNING
+#define LOGGER_ERROR
+#define LOGGER_FATAL
 
 #define LOGGER_NAMESPACE logger
 #define BEGIN_LOGGER_NAMESPACE namespace LOGGER_NAMESPACE {
 #define END_LOGGER_NAMESPACE }
 
 BEGIN_LOGGER_NAMESPACE
+#ifdef WIN32
+//#undef FOREGROUND_BLUE
+//#undef FOREGROUND_GREEN
+//#undef FOREGROUND_RED
+//#undef FOREGROUND_INTENSITY
+//#undef BACKGROUND_BLUE
+//#undef BACKGROUND_GREEN
+//#undef BACKGROUND_RED
+//#undef BACKGROUND_INTENSITY
+
+#define LOGGER_FOREGROUND_BLUE 0x01
+#define LOGGER_FOREGROUND_GREEN 0x02
+#define LOGGER_FOREGROUND_RED 0x04
+#define LOGGER_FOREGROUND_INTENSITY 0x08
+
+#define LOGGER_BACKGROUND_BLUE 0x10
+#define LOGGER_BACKGROUND_GREEN 0x20
+#define LOGGER_BACKGROUND_RED 0x40
+#define LOGGER_BACKGROUND_INTENSITY 0x80
+#else
+#define LOGGER_FOREGROUND_GREEN 0x02
+#define LOGGER_FOREGROUND_RED 0x01
+#define LOGGER_FOREGROUND_BLUE 0x04
+#define LOGGER_FOREGROUND_INTENSITY 0x00
+#endif
+
+void SetConsoleForgroundColor(FILE* stream, unsigned short clr);
+void ResetConsoleForgroundColor(FILE* stream);
 class LogHelper {
 public:
     enum Level {
         LOG,
-#ifdef LOG_INFO
+#ifdef LOGGER_INFO
         INFO,
 #endif // LOG_INFO
-#ifdef LOG_DEBUG
+#ifdef LOGGER_DEBUG
         DEBUG,
 #endif // LOG_DEBUG
-#ifdef LOG_WARNING
+#ifdef LOGGER_WARNING
         WARNING,
 #endif // LOG_WARNING
-#ifdef LOG_ERROR
+#ifdef LOGGER_ERROR
         ERROR,
 #endif // LOG_ERROR
-#ifdef LOG_FATAL
+#ifdef LOGGER_FATAL
         FATAL
 #endif // LOG_FATAL
     };
@@ -60,68 +89,86 @@ public:
                 tm_str_buf[i] = asc_tm_str[i];
             }
             const char* level_strings[] = {
-                "LOG",
-#ifdef LOG_INFO
-                "INF",
+                "*",
+#ifdef LOGGER_INFO
+                "!",
 #endif // LOG_INFO
-#ifdef LOG_DEBUG
-                "DBG",
+#ifdef LOGGER_DEBUG
+                "#",
 #endif // LOG_DEBUG
-#ifdef LOG_WARNING
-                "WNG",
+#ifdef LOGGER_WARNING
+                "!",
 #endif // LOG_WARNING
-#ifdef LOG_ERROR
-                "ERR",
+#ifdef LOGGER_ERROR
+                "@",
 #endif // LOG_ERROR
-#ifdef LOG_FATAL
-                "FAL"
+#ifdef LOGGER_FATAL
+                "$"
 #endif // LOG_FATAL
             };
-            this->PrintMessage(level, "[%s %s %s %s %d]", tag, level_strings[level], tm_str_buf, ch_idx, line);
+
+            const unsigned short colors[] = {
+                0x07 | LOGGER_FOREGROUND_INTENSITY,                      //! LOG
+                LOGGER_FOREGROUND_GREEN | LOGGER_FOREGROUND_INTENSITY,   //! INFO
+                LOGGER_FOREGROUND_BLUE | LOGGER_FOREGROUND_GREEN | LOGGER_FOREGROUND_INTENSITY,       //! DEBUG
+                LOGGER_FOREGROUND_RED | LOGGER_FOREGROUND_GREEN | LOGGER_FOREGROUND_INTENSITY, //! WARNINGS
+                LOGGER_FOREGROUND_RED | LOGGER_FOREGROUND_INTENSITY,                            //! ERROR
+                LOGGER_FOREGROUND_BLUE | LOGGER_FOREGROUND_RED | LOGGER_FOREGROUND_INTENSITY   //! FATAL
+            };
+
+            SetConsoleForgroundColor((&log_stream_)[level], colors[level]);
+            if (strlen(tag) != 0) {
+                this->PrintMessage(level, "[%s %s %s %s %d]", level_strings[level], tag, tm_str_buf, ch_idx, line);
+            }
+            else {
+                this->PrintMessage(level, "[%s %s %s %d]", level_strings[level], tm_str_buf, ch_idx, line);
+            }
+            ResetConsoleForgroundColor((&log_stream_)[level]);
         }
-        // void SetLogStream(Level level, FILE* stream) {
-        //     FILE** start_stream = &log_stream_;
-        //     if (start_stream[level] && start_stream[level] != stdout
-        //         && start_stream[level] != stderr)
-        //     {
-        //         fclose(start_stream[level]);
-        //     }
-        //     start_stream[level] = stream;
-        // }
+
+        void SetLogStream(Level level, FILE* stream) {
+            FILE** start_stream = &log_stream_;
+            if (start_stream[level] && start_stream[level] != stdout
+                && start_stream[level] != stderr)
+            {
+                fclose(start_stream[level]);
+            }
+            start_stream[level] = stream;
+        }
     private:
         LogUtil()
             : log_stream_(stdout)
-#ifdef LOG_INFO
-              , info_stream_(stdout)
+#ifdef LOGGER_INFO
+            , info_stream_(stdout)
 #endif // LOG_INFO
-#ifdef LOG_DEBUG
-                  , debug_stream_(stdout)
+#ifdef LOGGER_DEBUG
+            , debug_stream_(stdout)
 #endif // LOG_DEBUG
-#ifdef LOG_WARNING
-                  , warning_stream_(stderr)
+#ifdef LOGGER_WARNING
+            , warning_stream_(stderr)
 #endif // LOG_WARNING
-#ifdef LOG_ERROR
-                  , error_stream_(stderr)
+#ifdef LOGGER_ERROR
+            , error_stream_(stderr)
 #endif // LOG_ERROR
-#ifdef LOG_FATAL
-                  , fatal_stream_(stderr)
+#ifdef LOGGER_FATAL
+            , fatal_stream_(stderr)
 #endif // LOG_FATAL
         {
             const char* env_lst[] = {
                 getenv("LOG_LOG_FILE"),
-#ifdef LOG_INFO
+#ifdef LOGGER_INFO
                 getenv("INFO_LOG_FILE"),
 #endif // LOG_INFO
-#ifdef LOG_DEBUG
+#ifdef LOGGER_DEBUG
                 getenv("DEBUG_LOG_FILE"),
 #endif // LOG_DEBUG
-#ifdef LOG_WARNING
+#ifdef LOGGER_WARNING
                 getenv("WARNING_LOG_FILE"),
 #endif // LOG_WARNING
-#ifdef LOG_ERROR
+#ifdef LOGGER_ERROR
                 getenv("ERROR_LOG_FILE"),
 #endif // LOG_ERROR
-#ifdef LOG_FATAL
+#ifdef LOGGER_FATAL
                 getenv("FATAL_LOG_FILE")
 #endif // LOG_FATAL
             };
@@ -143,7 +190,7 @@ public:
                         start_stream[i] = NULL;
                     }
                 }
-UNIQUE_FILE_NAME:;
+            UNIQUE_FILE_NAME:;
             }
         }
 
@@ -163,7 +210,7 @@ UNIQUE_FILE_NAME:;
                 {
                     fclose(stream_start[i]);
                 }
-NOT_UNIQUE_STREAM:;
+            NOT_UNIQUE_STREAM:;
             }
         }
 
@@ -182,29 +229,33 @@ NOT_UNIQUE_STREAM:;
 
     private:
         FILE* log_stream_;
-#ifdef LOG_INFO
+#ifdef LOGGER_INFO
         FILE* info_stream_;
 #endif // LOG_INFO
-#ifdef LOG_DEBUG
+#ifdef LOGGER_DEBUG
         FILE* debug_stream_;
 #endif // LOG_DEBUG
-#ifdef LOG_WARNING
+#ifdef LOGGER_WARNING
         FILE* warning_stream_;
 #endif // LOG_WARNING
-#ifdef LOG_ERROR
+#ifdef LOGGER_ERROR
         FILE* error_stream_;
 #endif // LOG_ERROR
-#ifdef LOG_FATAL
+#ifdef LOGGER_FATAL
         FILE* fatal_stream_;
 #endif // LOG_FATAL
     };
 
 public:
-    LogHelper(Level level, const char* tag, const char* file, int line, bool ignore_non_fatal_message = false)
+    LogHelper(Level level, const char* tag, const char* file, int line, bool ignore_non_fatal_message = false, bool abort_fatal = false)
         : level_(level)
-          , util_(LogUtil::Inst())
-          , ignore_(ignore_non_fatal_message)
+        , util_(LogUtil::Inst())
+        , ignore_(ignore_non_fatal_message)
+        , abort_(abort_fatal)
     {
+        if (level == FATAL) {
+            ignore_ = false;
+        }
         if (!ignore_) {
             util_.WriteTitle(level, tag, file, line);
         }
@@ -215,11 +266,12 @@ public:
             //! Write end tag
             //! Generally, it is newline
             util_.PrintMessage(level_, "\n");
-            if (level_ == FATAL) {
-                util_.~LogUtil();
-                abort();
-            }
         }
+        if (abort_ && level_ == FATAL) {
+            util_.~LogUtil();
+            abort();
+        }
+
     }
 
     LogHelper& operator << (char ch) {
@@ -281,6 +333,7 @@ private:
     Level level_;
     LogUtil& util_;
     bool ignore_;
+    bool abort_;
 };
 
 END_LOGGER_NAMESPACE
