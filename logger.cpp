@@ -37,12 +37,14 @@ void ResetConsoleForgroundColor(FILE* stream)
 }
 END_LOGGER_NAMESPACE
 #else
-void SetConsoleForgroundColor(FILE* stream, unsigned short clr) {
+BEGIN_LOGGER_NAMESPACE
+void SetConsoleForegroundColor(FILE* stream, unsigned short clr) {
     fprintf(stream, "\033[3%d", clr);
 }
 
-void ResetConsoleForgroundColor(FILE* stream)
+void ResetConsoleForegroundColor(FILE* stream)
 {
     fprintf(stream, "\033[0m");
 }
+END_LOGGER_NAMESPACE
 #endif // WIN32

@@ -44,8 +44,8 @@ BEGIN_LOGGER_NAMESPACE
 #define LOGGER_FOREGROUND_INTENSITY 0x00
 #endif
 
-void SetConsoleForgroundColor(FILE* stream, unsigned short clr);
-void ResetConsoleForgroundColor(FILE* stream);
+void SetConsoleForegroundColor(FILE* stream, unsigned short clr);
+void ResetConsoleForegroundColor(FILE* stream);
 class LogHelper {
 public:
     enum Level {
@@ -116,14 +116,14 @@ public:
                 LOGGER_FOREGROUND_BLUE | LOGGER_FOREGROUND_RED | LOGGER_FOREGROUND_INTENSITY   //! FATAL
             };
 
-            SetConsoleForgroundColor((&log_stream_)[level], colors[level]);
+            SetConsoleForegroundColor((&log_stream_)[level], colors[level]);
             if (strlen(tag) != 0) {
                 this->PrintMessage(level, "[%s %s %s %s %d]", level_strings[level], tag, tm_str_buf, ch_idx, line);
             }
             else {
                 this->PrintMessage(level, "[%s %s %s %d]", level_strings[level], tm_str_buf, ch_idx, line);
             }
-            ResetConsoleForgroundColor((&log_stream_)[level]);
+            ResetConsoleForegroundColor((&log_stream_)[level]);
         }
 
         FILE* GetLogStream(Level level) const {
