@@ -126,12 +126,22 @@ public:
             ResetConsoleForgroundColor((&log_stream_)[level]);
         }
 
+        FILE* GetLogStream(Level level) const {
+            return (&log_stream_)[level];
+        }
+        
         void SetLogStream(Level level, FILE* stream) {
             FILE** start_stream = &log_stream_;
-            if (start_stream[level] && start_stream[level] != stdout
-                && start_stream[level] != stderr)
-            {
-                fclose(start_stream[level]);
+            FILE* old_stream = start_stream[level];
+            for (int i = 0; i < sizeof(LogUtil) / sizeof(void*); ++i) {
+                if (old_stream == start_stream[level] && start_stream[level] != stdout
+                    && start_stream[level] != stderr)
+                {
+                    start_stream[level] = NULL;
+                }
+            }
+            if (old_stream != NULL && old_stream != stdout && old_stream != stderr) {
+                fclose(old_stream);
             }
             start_stream[level] = stream;
         }
