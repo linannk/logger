@@ -91,7 +91,7 @@ public:
             const char* level_strings[] = {
                 "*",
 #ifdef LOGGER_INFO
-                "!",
+                "&",
 #endif // LOG_INFO
 #ifdef LOGGER_DEBUG
                 "#",
@@ -129,18 +129,29 @@ public:
         FILE* GetLogStream(Level level) const {
             return (&log_stream_)[level];
         }
-        
-        void SetLogStream(Level level, FILE* stream) {
+
+        FILE* GetLogStreamAndSetNull(Level level) {
+            FILE* ret = (&log_stream_)[level];
+            (&log_stream_)[level] = NULL;
+            return ret;
+        }
+
+        void SetLogStream(Level level, FILE* stream)
+        {
             FILE** start_stream = &log_stream_;
             FILE* old_stream = start_stream[level];
+            start_stream[level] = NULL;
             for (int i = 0; i < sizeof(LogUtil) / sizeof(void*); ++i) {
-                if (old_stream == start_stream[level] && start_stream[level] != stdout
-                    && start_stream[level] != stderr)
+                if (old_stream == start_stream[i])
                 {
-                    start_stream[level] = NULL;
+                    old_stream = NULL;
+                    break;
                 }
             }
-            if (old_stream != NULL && old_stream != stdout && old_stream != stderr) {
+            if (old_stream != NULL
+                && old_stream != stdout
+                && old_stream != stderr)
+            {
                 fclose(old_stream);
             }
             start_stream[level] = stream;
